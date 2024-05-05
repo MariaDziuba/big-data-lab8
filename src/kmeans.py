@@ -12,11 +12,6 @@ from pyspark.sql import SparkSession
 from preprocess import Preprocessor
 
 
-spark = SparkSession.builder \
-    .master("local") \
-    .appName("KMeans") \
-    .getOrCreate()
-
 class KMeansClustering:
 
     def clustering(self, scaled_data):
@@ -38,6 +33,15 @@ class KMeansClustering:
 def main():
     config = configparser.ConfigParser()
     config.read('config.ini')
+
+    spark = SparkSession.builder \
+    .appName(config['spark']['app_name']) \
+    .master(config['spark']['deploy_mode']) \
+    .config("spark.driver.cores", config['spark']['driver_cores']) \
+    .config("spark.executor.cores", config['spark']['executor_cores']) \
+    .config("spark.driver.memory", config['spark']['driver_memory']) \
+    .config("spark.executor.memory", config['spark']['executor_memory']) \
+    .getOrCreate()
 
     path_to_data = os.path.join(cur_dir.parent.parent, config['data']['small_openfoodfacts'])
     preprocessor = Preprocessor()
