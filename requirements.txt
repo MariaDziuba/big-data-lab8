@@ -2,3 +2,4 @@ path
 configparser
 pyspark
 psutil
+numpy
