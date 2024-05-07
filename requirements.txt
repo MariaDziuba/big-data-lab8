@@ -3,3 +3,5 @@ configparser
 pyspark
 psutil
 numpy
+mysql-connector-python
+pandas
