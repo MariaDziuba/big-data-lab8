@@ -1,14 +1,17 @@
 from pyspark.ml.feature import VectorAssembler, StandardScaler
+from db import Database
+
 
 class Preprocessor:
 
-    def load_dataset(self, path_to_data, spark):
-        dataset = spark.read.csv(
-            path_to_data,
-            header=True,
-            inferSchema=True,
-            sep='\t',
-        )
+    def load_dataset(self, db: Database):
+        dataset = db.read_table("OpenFoodFacts")
+        # dataset = spark.read.csv(
+            # path_to_data,
+            # header=True,
+            # inferSchema=True,
+            # sep='\t',
+        # )
         dataset.fillna(value=0)
 
         output_col = 'features'
@@ -17,10 +20,10 @@ class Preprocessor:
                 # 'last_updated_t',
                 'completeness',
                 # 'last_image_t',
-                'energy-kcal_100g',
+                'energy_kcal_100g',
                 'energy_100g',
                 'fat_100g',
-                'saturated-fat_100g',
+                'saturated_fat_100g',
                 'carbohydrates_100g',
                 'sugars_100g',
                 'proteins_100g',
