@@ -9,14 +9,13 @@ tmp_dir = os.path.join(cur_dir.parent.parent.parent, "tmp")
 from pyspark.ml.clustering import KMeans
 from pyspark.ml.evaluation import ClusteringEvaluator
 from pyspark.sql import SparkSession
-from preprocess import Preprocessor
-from db import Database
+from datamart import DataMart
 
 
 class KMeansClustering:
 
-    def __init__(self, db):
-        self.db = db
+    def __init__(self, datamart):
+        self.datamart = datamart
 
     def clustering(self, scaled_data):
         evaluator = ClusteringEvaluator(
@@ -30,7 +29,7 @@ class KMeansClustering:
             kmeans = KMeans(featuresCol='scaled_features', k=k)
             model = kmeans.fit(scaled_data)
             predictions = model.transform(scaled_data)
-            self.db.insert_df(predictions.select("prediction"), "Predictions")
+            self.datamart.write_predictions(predictions.select("prediction"))
             score = evaluator.evaluate(predictions)
             print(f'k = {k}, silhouette score = {score}')
 
@@ -46,18 +45,15 @@ def main():
     .config("spark.executor.cores", config['spark']['executor_cores']) \
     .config("spark.driver.memory", config['spark']['driver_memory']) \
     .config("spark.executor.memory", config['spark']['executor_memory']) \
-    .config("spark.jars", config['spark']['mysql_connector_jar']) \
+    .config("spark.jars", f"{config['spark']['mysql_connector_jar']},jars/datamart.jar") \
     .config("spark.driver.extraClassPath", config['spark']['mysql_connector_jar']) \
     .getOrCreate()
 
-    db = Database(spark)
-    # path_to_data = os.path.join(cur_dir.parent.parent, config['data']['small_openfoodfacts'])
-    preprocessor = Preprocessor()
+    datamart = DataMart(spark=spark)
 
-    assembled_data = preprocessor.load_dataset(db)
-    scaled_data = preprocessor.scale_assembled_dataset(assembled_data)
-    kmeans = KMeansClustering(db)
-    kmeans.clustering(scaled_data)
+    assembled_data = datamart.read_dataset()
+    kmeans = KMeansClustering(datamart)
+    kmeans.clustering(assembled_data)
 
     spark.stop()
 
