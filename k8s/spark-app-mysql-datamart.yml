@@ -1,0 +1,28 @@
+apiVersion: "sparkoperator.k8s.io/v1beta2"
+kind: SparkApplication
+metadata:
+  name: kmeans-spark
+  namespace: default
+spec:
+  type: Python
+  pythonVersion: "3"
+  image: "mariadziuba/lab7_bd:latest"
+  imagePullPolicy: Always
+  mainApplicationFile: "local:///app/src/kmeans.py"
+  sparkVersion: "3.4.1"
+  deps:
+    jars:
+      - local:///opt/spark/jars/mysql-connector-j-8.4.0.jar
+      - local:///app/jars/datamart.jar
+  restartPolicy:
+    type: Always
+  driver:
+    cores: 1
+    labels:
+      version: 3.4.1
+    serviceAccount: spark
+  executor:
+    cores: 1
+    instances: 1
+    labels:
+      version: 3.4.1
