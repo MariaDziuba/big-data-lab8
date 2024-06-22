@@ -9,13 +9,12 @@ tmp_dir = os.path.join(cur_dir.parent.parent.parent, "tmp")
 from pyspark.ml.clustering import KMeans
 from pyspark.ml.evaluation import ClusteringEvaluator
 from pyspark.sql import SparkSession
-from datamart import DataMart
+from create_tables import create_open_food_facts
+import loguru
+import time
 
 
 class KMeansClustering:
-
-    def __init__(self, datamart):
-        self.datamart = datamart
 
     def clustering(self, scaled_data):
         evaluator = ClusteringEvaluator(
@@ -29,7 +28,6 @@ class KMeansClustering:
             kmeans = KMeans(featuresCol='scaled_features', k=k)
             model = kmeans.fit(scaled_data)
             predictions = model.transform(scaled_data)
-            self.datamart.write_predictions(predictions.select("prediction"))
             score = evaluator.evaluate(predictions)
             print(f'k = {k}, silhouette score = {score}')
 
@@ -38,6 +36,13 @@ def main():
     config = configparser.ConfigParser()
     config.read('config.ini')
 
+    # .config("spark.driver.host", "127.0.0.1") \
+    # .config("spark.driver.bindAddress", "127.0.0.1") \
+    
+    sql_connector_path = os.path.join(cur_dir.parent.parent, config['spark']['mysql_connector_jar'])
+    scala_logging_path = os.path.join(cur_dir.parent.parent, config['spark']['scala_logging'])
+    parquet_path = os.path.join(cur_dir.parent.parent, config['data']['parquet_path'])
+
     spark = SparkSession.builder \
     .appName(config['spark']['app_name']) \
     .master(config['spark']['deploy_mode']) \
@@ -45,14 +50,23 @@ def main():
     .config("spark.executor.cores", config['spark']['executor_cores']) \
     .config("spark.driver.memory", config['spark']['driver_memory']) \
     .config("spark.executor.memory", config['spark']['executor_memory']) \
-    .config("spark.jars", f"{config['spark']['mysql_connector_jar']},jars/datamart.jar") \
-    .config("spark.driver.extraClassPath", config['spark']['mysql_connector_jar']) \
+    .config("spark.dynamicAllocation.enabled", config['spark']['dynamic_allocation']) \
+    .config("spark.dynamicAllocation.minExecutors", config['spark']['min_executors']) \
+    .config("spark.dynamicAllocation.maxExecutors", config['spark']['max_executors']) \
+    .config("spark.dynamicAllocation.initialExecutors", config['spark']['initial_executors']) \
+    .config("spark.jars", f"{sql_connector_path},jars/datamart.jar,{scala_logging_path}") \
+    .config("spark.driver.extraClassPath", sql_connector_path) \
     .getOrCreate()
 
-    datamart = DataMart(spark=spark)
+    loguru.logger.info("Created a SparkSession object")
 
-    assembled_data = datamart.read_dataset()
-    kmeans = KMeansClustering(datamart)
+    while(True):
+        if os.path.isdir(parquet_path):
+            break
+        time.sleep(10)
+
+    assembled_data = spark.read.parquet(parquet_path)
+    kmeans = KMeansClustering()
     kmeans.clustering(assembled_data)
 
     spark.stop()

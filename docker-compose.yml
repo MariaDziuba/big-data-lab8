@@ -7,3 +7,18 @@ services:
     environment:
       - MYSQL_DATABASE=lab6
       - MYSQL_ROOT_PASSWORD=password
+      
+  datamart:
+    container_name: datamart
+    image: "datamart:latest"
+    ports:
+      - '9000:9000'
+
+  spark:
+    container_name: spark
+    image: "spark:latest"
+    depends_on:
+      - mysql
+      - datamart
+volumes:
+  shared_data:
